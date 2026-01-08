@@ -1,7 +1,6 @@
 #ifndef __DS18B20_H
 #define __DS18B20_H
 
-
 typedef enum _DS_CMD{				//DS18B20指令表
 	Read_Rom=			0x33,		//读取64位Rom
 	APNT_Rom=			0x55,		//指定Rom
@@ -41,10 +40,16 @@ typedef struct _DS_Sruct{
 																SmpIO_Set(DS_ALL_Arr[index].Pin,FALSE);}\
 										while(0);}
 
-#define __DS_ALL_Pin_Get(Buff)			{do{u8 index=0;	for(; index< __MAX_DS_NUM; index++)\
+#define __DS_ALL_Pin_Get1Byte(Buff)		{do{u8 index=0;	for(; index< __MAX_DS_NUM; index++)\
 															if(DS_ALL_Arr[index].STA == TRUE)\
 																Buff|=(SmpIO_Read(DS_ALL_Arr[index].Pin)<<index);}\
 										while(0);}			//将所有_DS的引脚读取状态存入到Buff中，Buff为一个整数型变量，不能用立即数
+										
+#define __DS_ALL_Pin_Get(Buff)			{do{u8 index=0;	for(; index< __MAX_DS_NUM; index++)\
+															if(DS_ALL_Arr[index].STA == TRUE)\
+																if(SmpIO_Read(DS_ALL_Arr[index].Pin))\
+																	Buff[index] |= (1 << i);}\
+										while(0);}			//将所有_DS的引脚读取状态存入到Buff对应元素的最低位中，Buff为数组
 extern DS_Struct DS_ALL_Arr[__MAX_DS_NUM];
 
 										
@@ -62,6 +67,7 @@ u8 DS18B20_Start_Convert(u8 Pin);
 u8 DS18B20_ALL_Start_Convert(void);
 float DS18B20_Read_Temp_float(u8 Pin);		//读取温度
 void DS18B20_ALL_Read_Temp_float(void);
-int DS18B20_Read_Temp_int(u8 Pin);
+short DS18B20_Read_Temp_Short(u8 Pin);
+
 
 #endif

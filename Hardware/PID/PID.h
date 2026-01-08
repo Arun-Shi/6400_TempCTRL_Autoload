@@ -37,7 +37,7 @@ typedef struct PID_Value{
 
 typedef struct PID_Struct{
 	double (*I_Change)(double);				//输入单位转化函数指针
-	double (*O_Change)(double);				//输出单位转化函数指针
+	double (*O_Change)(double);				//输出单位转化函数，目前设计为接口，内部直接将值应用于执行器
 	PID_Value Value;						//PID数值结构体
 	PID_Agm Agm;							//PID参数结构体
 	Perform_Level Level;					//性能等级
@@ -48,7 +48,8 @@ typedef struct PID_Struct{
 u8 PID_Struct_Init(PID_Struct* PID, PID_Value* Value, Perform_Level Level);
 u8 PID_Switch(PID_Struct* PID, __Status Status);
 u8 PID_Calculate_Out(PID_Struct* PID);
-u8 PID_Set_Target(PID_Struct* PID, int Target);
+u8 PID_Set_Target(PID_Struct* PID, float Target);
+u8 PID_Input_Change(PID_Struct* PID, float Value);
 u8 PID_Apply_Out(PID_Struct* PID);
 
 // u8 PID_Get_Value(PID_Struct* PID, PID_Value* Value);

@@ -1,6 +1,7 @@
 #include "./Smp_IO/Smp_IO.h"
 
 GPIOSpeed_TypeDef DE_SPEED =  GPIO_Speed_50MHz;
+char* skip(char* buff);
 u8 SmpIO_StrtPin(char* Str)
 {
     Str = skip(Str); 

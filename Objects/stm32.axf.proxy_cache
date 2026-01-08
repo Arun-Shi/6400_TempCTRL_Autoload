@@ -15068,7 +15068,7 @@ Contents of the .debug_info section:
     <124e8>   DW_AT_decl_file   : 1
     <124e9>   DW_AT_decl_line   : 31
     <124ea>   DW_AT_decl_column : 6
-    <124eb>   DW_AT_name        : Main_FuncInit
+    <124eb>   DW_AT_name        : Func_MainInit
     <124f9>   DW_AT_external    : 1
     <124fa>   DW_AT_low_pc      : 0x8004218
     <124fe>   DW_AT_high_pc     : 0x80042a8

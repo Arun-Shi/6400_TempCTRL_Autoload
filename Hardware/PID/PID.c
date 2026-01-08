@@ -67,7 +67,7 @@ u8 PID_Calculate_Out(PID_Struct* PID)
 	if(PID->Agm.Death_err && __ABS(PID->Value.Error) < PID->Agm.Death_err)			//判断死区参数，如果死区参数存在，则判断误差值是否小于死区参数，小于则不进行计算
 		return TRUE;
 
-	PID->Value.Error= PID->Value.Target - PID->Value.Measure;
+	PID->Value.Error= PID->Value.Target - PID->Value.Measure;						//计算误差值
 	
 	PID->Value.P_Out= PID->Agm.Kp* PID->Value.Error;								//比例环节计算
 	
@@ -93,6 +93,9 @@ u8 PID_Calculate_Out(PID_Struct* PID)
 	if(PID->Agm.Out_Acc )//判断是否存在加速度限制，存在的话，限制此次变化量不大于Out_Acc
 		calc_result= __Range_OF(calc_result, PID->Value.T_Out- PID->Agm.Out_Acc, PID->Value.T_Out+ PID->Agm.Out_Acc);
 
+	PID->Value.L_Error = PID->Value.Error;
+	PID->Value.L_Measure = PID->Value.Measure;
+
 	PID->Value.T_Out= calc_result;
 
 	return TRUE;
@@ -106,11 +109,26 @@ u8 PID_Calculate_Out(PID_Struct* PID)
 备	注：目标值会依据单位转换函数进行转换后赋值给PID控制器
 
 */
-u8 PID_Set_Target(PID_Struct* PID, int Target)
+u8 PID_Set_Target(PID_Struct* PID, float Target)
 {
 	if(PID==NULL)
 		return FALSE;
 	PID->Value.Target= PID->I_Change(Target);
+	return TRUE;
+}
+/*
+函	数：PID输入值转换->测量值
+参	数：PID结构体指针
+		Value- 输出值
+返	回：TRUE- 函数成功
+		FALSE- 函数失败
+备	注：此函数将入值进行单位转换，返回结果
+*/
+u8 PID_Input_Change(PID_Struct* PID, float Value)
+{
+	if(PID==NULL)
+		return FALSE;
+	PID->Value.Measure= PID->I_Change(Value);
 	return TRUE;
 }
 /*
@@ -129,6 +147,37 @@ u8 PID_Apply_Out(PID_Struct* PID)
 }
 /***********************************下面的没用上*****************************/
 #if 1
+/*
+函  数：标准增量式PID计算
+参  数：PID结构体指针
+返  回：TRUE/FALSE
+备  注：增量式PID输出的是 Delta_Out，需要累加到执行机构上
+*/
+// u8 PID_Incremental_Calculate(PID_Struct* PID)
+// {
+//     float delta_out;
+
+//     if(PID == NULL || PID->PID_Switch == FALSE)
+//         return FALSE;
+
+//     // 1. 计算当前误差
+//     PID->Value.Error = PID->Value.Target - PID->Value.Measure;
+
+//     // 2. 增量式 PID 标准公式：
+//     // Δu = Kp * (e(k) - e(k-1)) + Ki * e(k) + Kd * (e(k) - 2e(k-1) + e(k-2))
+//     delta_out = PID->Agm.Kp * (PID->Value.Error - PID->Value.L_Error) + 
+//                 PID->Agm.Ki * PID->Value.Error + 
+//                 PID->Agm.Kd * (PID->Value.Error - 2 * PID->Value.L_Error + PID->Value.LL_Error);
+
+//     // 3. 累加到总输出（执行机构位置）
+//     PID->Value.T_Out += delta_out;
+
+//     // 4. 更新历史状态（非常重要！）
+//     PID->Value.LL_Error = PID->Value.L_Error; // 上上次误差
+//     PID->Value.L_Error = PID->Value.Error;    // 上次误差
+
+//     return TRUE;
+// }
 /*
 函	数：PID参数自整定
 参	数：PID结构体指针

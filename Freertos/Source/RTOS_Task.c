@@ -62,8 +62,9 @@ void vTask_PIDFunc_Handler(void* arg)
 	TickType_t pxLastWakeTime= xTaskGetTickCount();
 	while(1)
 	{
-		vTaskDelayUntil(&pxLastWakeTime,500);
-		//每500ms执行一次PID计算
+		vTaskDelayUntil(&pxLastWakeTime,1000);
+		//每1000ms执行一次PID计算
+		PID_Input_Change(&PID_TempALL, Temperature_OFBox[0]);		//单仓时，只使用一个PID
 		if(PID_Calculate_Out(&PID_TempALL))
 			PID_Apply_Out(&PID_TempALL);
 	}
@@ -73,12 +74,14 @@ void vTask_CycleGetTemp(void* arg)
 	TickType_t pxLastWakeTime= xTaskGetTickCount();
 	while(1)
 	{
-		vTaskDelayUntil(&pxLastWakeTime,500);
-		//每500ms执行一次温度获取
+		vTaskDelayUntil(&pxLastWakeTime, 1000);		//每1000ms执行一次温度获取
 
 		DS18B20_ALL_Start_Convert();
-		
+		vTaskDelay(800);							//将转换和读取分开，转换需要750ms时间
 		DS18B20_ALL_Read_Temp_float();
+
+		//读取温度后，将温度加权计算
+		Temperature_Weighted_Cal();
 	}
 }
 void vTask_SysSupervisor(void* arg)
@@ -109,7 +112,7 @@ void vTask_StartOS(void* arg)
 	xMutex_IICBus= xSemaphoreCreateMutex();						//创建IIC总线互斥锁
 
 //初始化功能外设
-	Main_FuncInit();
+	Func_MainInit();
 
 /****************************创建任务********************************/
 //创建并运行空闲处理任务
