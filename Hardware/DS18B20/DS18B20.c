@@ -5,7 +5,7 @@
 DS_Struct DS_ALL_Arr[__MAX_DS_NUM]={
 	{TRUE,D5,0.0},{TRUE,D6,0.0},{TRUE,D7,0.0},{TRUE,G9,0.0},{TRUE,G13,0.0},{TRUE,G14,0.0},{TRUE,G15,0.0},{TRUE,B4,0.0},{TRUE,B5,0.0},{TRUE,B6,0.0}
 };
-
+/*******************************多DS18B20操作***************************/
 void DS18B20_Init(void)
 {
 	for(u8 index=0; index< __MAX_DS_NUM; index++)
@@ -17,7 +17,7 @@ void DS18B20_Init(void)
 u8 DS18B20_ALL_Reset(void)
 {
 	u8 DS_Status=0;
-
+	taskENTER_CRITICAL();
 	__DS_ALL_Pin_Hight
 	__DS_ALL_Pin_Low
 	Delay_us(470);
@@ -28,52 +28,14 @@ u8 DS18B20_ALL_Reset(void)
 	
 	Delay_us(470);
 	__DS_ALL_Pin_Hight
-	
+	taskEXIT_CRITICAL();
  	return DS_Status;
 }
-//指定某一DS18B20进行状态重置
-u8 DS18B20_Reset(IO_Pos Pin)
-{
-	u8 DS_Status=0;
-	
-	DS_Pin_Hight(Pin);
-	Delay_us(2);
-	DS_Pin_Low(Pin);
-	Delay_us(480);
-	DS_Pin_Hight(Pin);
-	Delay_us(60);
-	
-	DS_Status=DS_Pin_Get(Pin);
-	
-	Delay_us(480);
-	DS_Pin_Hight(Pin);
-	
-	return DS_Status;
-}
-//指定某一DS18B20发送一字节数据
-void DS18B20_Send_Byte(IO_Pos Pin, u8 data)
-{
-	for(u8 i=0;i<8;i++)
-	{
-		DS_Pin_Low(Pin);
-		Delay_us(2);
-		
-		if(data & 1)
-			DS_Pin_Hight(Pin);
-		else
-			DS_Pin_Low(Pin);
-		
-		data >>=1;
-		
-		Delay_us(60);
-		DS_Pin_Hight(Pin);
-		
-		Delay_us(2);
-	}
-}
+
 //所有DS18B20发送一字节数据
 void DS18B20_ALL_Send_Byte(u8 data)
 {
+	taskENTER_CRITICAL();
 	for(u8 i=0;i<8;i++)
 	{
 		__DS_ALL_Pin_Low
@@ -88,43 +50,17 @@ void DS18B20_ALL_Send_Byte(u8 data)
 		Delay_us(60);
 		__DS_ALL_Pin_Hight
 	}
-}
-
-u8 DS18B20_Read_Byte(IO_Pos Pin)
-{
-	u8 data =0;
-	static u8 a=2,b=12,c=60;
-	for(u8 i=0;i<8;i++)
-	{
-		data>>=1;
-		DS_Pin_Low(Pin);
-		Delay_us(a);
-		
-		DS_Pin_Hight(Pin);
-		Delay_us(b);
-		if(DS_Pin_Get(Pin))
-			data|=0x80;
-		Delay_us(c);
-	}
-	return data;
+	taskEXIT_CRITICAL();
 }
 void DS18B20_ALL_Read_Byte(u8* Buff)
 {
 	u8 data[__MAX_DS_NUM] ={0};
 //逐个读取耗时7ms
+	taskENTER_CRITICAL();
 	for(u8 i=0; i<__MAX_DS_NUM; i++)
 		data[i]=DS18B20_Read_Byte(DS_ALL_Arr[i].Pin);
 	memmove(Buff,data,__MAX_DS_NUM);
-}
-u8 DS18B20_Start_Convert(IO_Pos Pin)
-{
-	u8 DS_status=TRUE;
-	
-	DS_status&= DS18B20_Reset(Pin);		//复位
-	DS18B20_Send_Byte(Pin,0XCC);		//跳过ROM检测
-	DS18B20_Send_Byte(Pin,0X44);		//启动温度转换
-	
-	return DS_status;
+	taskEXIT_CRITICAL();
 }
 u8 DS18B20_ALL_Start_Convert(void)
 {
@@ -135,28 +71,6 @@ u8 DS18B20_ALL_Start_Convert(void)
 	DS18B20_ALL_Send_Byte(0X44);		//启动温度转换
 	
 	return DS_status;
-}
-float DS18B20_Read_Temp_float(IO_Pos Pin)		//读取温度
-{
-	u8 Data_Low,Data_hight;
-	u16 data;
-	
-	DS18B20_Reset(Pin);					//复位
-	DS18B20_Send_Byte(Pin, 0XCC);      	//跳过ROM检测
-	DS18B20_Send_Byte(Pin, 0XBE);      	//读取暂存器指令
-	
-	Data_Low=DS18B20_Read_Byte(Pin);	//读温度低位
-	Data_hight=DS18B20_Read_Byte(Pin);	//读温度高位
-	
-	data=(Data_hight<<8)+Data_Low;
-
-	if(data&0X800)						//如果是负数，则将补码还原成原码
-	{
-		data=~data+1;
-		return -(data * 0.0625);
-	}
-	else
-		return data * 0.0625;
 }
 void DS18B20_ALL_Read_Temp_float(void)
 {
@@ -202,6 +116,108 @@ void DS18B20_ALL_Read_Temp_float(void)
 			DS_ALL_Arr[j].Tempdata= data[j] * 0.0625;
 	}
 }
+
+/*****************************单DS18B20操作*************************** */
+//指定某一DS18B20进行状态重置
+#if 0
+u8 DS18B20_Reset(IO_Pos Pin)
+{
+
+	u8 DS_Status=1;
+
+	DS_Pin_Hight(Pin);
+	Delay_us(2);
+	DS_Pin_Low(Pin);
+	Delay_us(480);
+	DS_Pin_Hight(Pin);
+	Delay_us(60);
+	
+	DS_Status=DS_Pin_Get(Pin);
+	
+	Delay_us(480);
+	DS_Pin_Hight(Pin);
+	
+	return DS_Status;
+
+}
+//指定某一DS18B20发送一字节数据
+void DS18B20_Send_Byte(IO_Pos Pin, u8 data)
+{
+	for(u8 i=0;i<8;i++)
+	{
+		DS_Pin_Low(Pin);
+		Delay_us(2);
+		
+		if(data & 1)
+			DS_Pin_Hight(Pin);
+		else
+			DS_Pin_Low(Pin);
+		
+		data >>=1;
+		
+		Delay_us(60);
+		DS_Pin_Hight(Pin);
+		
+		Delay_us(2);
+	}
+}
+
+
+u8 DS18B20_Read_Byte(IO_Pos Pin)
+{
+	u8 data =0;
+	static u8 a=2,b=12,c=60;
+
+	for(u8 i=0;i<8;i++)
+	{
+		data>>=1;
+		DS_Pin_Low(Pin);
+		Delay_us(a);
+		
+		DS_Pin_Hight(Pin);
+		Delay_us(b);
+		if(DS_Pin_Get(Pin))
+			data|=0x80;
+		Delay_us(c);
+	}
+
+	return data;
+}
+
+u8 DS18B20_Start_Convert(IO_Pos Pin)
+{
+	u8 DS_status=TRUE;
+	
+	DS_status&= DS18B20_Reset(Pin);		//复位
+	DS18B20_Send_Byte(Pin,0XCC);		//跳过ROM检测
+	DS18B20_Send_Byte(Pin,0X44);		//启动温度转换
+	
+	return DS_status;
+}
+
+float DS18B20_Read_Temp_float(IO_Pos Pin)		//读取温度
+{
+	u8 Data_Low,Data_hight;
+	u16 data;
+	
+	DS18B20_Reset(Pin);					//复位
+	DS18B20_Send_Byte(Pin, 0XCC);      	//跳过ROM检测
+	DS18B20_Send_Byte(Pin, 0XBE);      	//读取暂存器指令
+	
+	Data_Low=DS18B20_Read_Byte(Pin);	//读温度低位
+	Data_hight=DS18B20_Read_Byte(Pin);	//读温度高位
+	
+	data=(Data_hight<<8)+Data_Low;
+
+	if(data&0X800)						//如果是负数，则将补码还原成原码
+	{
+		data=~data+1;
+		return -(data * 0.0625);
+	}
+	else
+		return data * 0.0625;
+}
+
 int DS18B20_Read_Temp_int(IO_Pos Pin)
 {
 	u8 Data_Low,Data_hight;
@@ -215,3 +231,4 @@ int DS18B20_Read_Temp_int(IO_Pos Pin)
 	
 	return (Data_hight<<8)+Data_Low;
 }
+#endif
