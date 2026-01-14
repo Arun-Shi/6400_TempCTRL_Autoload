@@ -1,0 +1,15 @@
+A项目：目标项目：C:\Users\lenovo\Desktop\6400_TempCTRL_Autoload
+B项目：江波龙温控箱项目：D:\Doc\Project_backup\Another\LongSys\CXL_TMPCTRL - PIDAuto V1.1
+C项目：记忆商鞅电机项目：D:\Doc\Project_backup\JY\16IO_Tool_ShangYangV03
+D项目：自研8通道电气采集项目：D:\Doc\Project_backup\Another\8CH_ElcSVN		
+
+一、开发总流程：
+X	A=B的温控+C的电机+新硬件适配+软件细调	》》》	B系统耦合程度太高，不再以其为基础
+	加入D系统，以其RTOS为基础，移植B系统的温控相关功能	》》》	剔除D系统原本的任务，只保留FreeRtos
+
+二、目前阶段：
+X	B项目剔除多余模块中
+√	D项目剔除多余模块中	》》挑出Rtos_Stm32F103Vet6标准程序
+√	组合温控模块中
+√	OS匹配——温度模块
+√	按键、动作移植

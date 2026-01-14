@@ -542,11 +542,6 @@
               <FilePath>.\Freertos\Source\RTOS_Task.c</FilePath>
             </File>
             <File>
-              <FileName>ParamSave.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\Hardware\ParamSave\ParamSave.c</FilePath>
-            </File>
-            <File>
               <FileName>Fans.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\Hardware\Fans\Fans.c</FilePath>
@@ -570,6 +565,11 @@
               <FileName>DS18B20.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\Hardware\DS18B20\DS18B20.c</FilePath>
+            </File>
+            <File>
+              <FileName>ParamSave.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\Hardware\ParamSave\ParamSave.c</FilePath>
             </File>
           </Files>
         </Group>

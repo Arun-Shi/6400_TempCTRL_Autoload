@@ -16,7 +16,10 @@ TaskHandle_t	TCB_SysSupervisor;									//系统状态监控任务
 UBaseType_t		uxPriority_SysSupervisor= 4;
 
 TaskHandle_t	TCB_Moving;											//机械动作任务
-UBaseType_t		uxPriority_Moving= 3;
+UBaseType_t		uxPriority_Moving= 4;
+
+TaskHandle_t	TCB_PIDExec;										//PID执行任务
+UBaseType_t		uxPriority_PIDExec= 3;
 
 SemaphoreHandle_t xMutex_UartTX;									//打印端口的互斥量
 SemaphoreHandle_t xMutex_IICBus;									//IIC总线互斥量
@@ -64,9 +67,17 @@ void vTask_PIDFunc_Handler(void* arg)
 	{
 		vTaskDelayUntil(&pxLastWakeTime,1000);
 		//每1000ms执行一次PID计算
-		PID_Input_Change(&PID_TempALL, Temperature_OFBox[0]);		//单仓时，只使用一个PID
-		if(PID_Calculate_Out(&PID_TempALL))
-			PID_Apply_Out(&PID_TempALL);
+		PID_Input_Change(&PID_TempLeft, Temperature_OFBox[0]);
+		if(PID_Calculate_Out(&PID_TempLeft))
+			PID_Apply_Out(&PID_TempLeft);
+
+		PID_Input_Change(&PID_TempMid, Temperature_OFBox[1]);
+		if(PID_Calculate_Out(&PID_TempMid))
+			PID_Apply_Out(&PID_TempMid);
+
+		PID_Input_Change(&PID_TempRight, Temperature_OFBox[2]);
+		if(PID_Calculate_Out(&PID_TempRight))
+			PID_Apply_Out(&PID_TempRight);
 	}
 }
 void vTask_CycleGetTemp(void* arg)
@@ -80,17 +91,21 @@ void vTask_CycleGetTemp(void* arg)
 		vTaskDelay(800);							//将转换和读取分开，转换需要750ms时间
 		DS18B20_ALL_Read_Temp_float();
 
-		//读取温度后，将温度加权计算
-		Temperature_Weighted_Cal();
+		Temperature_Average_Cal();					//读取温度后，将温度加权计算
 	}
 }
 void vTask_SysSupervisor(void* arg)
 {
 	TickType_t pxLastWakeTime= xTaskGetTickCount();
+	vTaskDelay(50);									//与系统起点错开50ms
 	while(1)
 	{
 		vTaskDelayUntil(&pxLastWakeTime,10);
 		//每10ms执行一次系统状态监控
+		__Cycle_ToDo(								//每1000ms进行一次温度超限判断
+			if(Temperature_OFBox[0]>__Value_MAXTemp)
+				Temperature_OFBox[0]+=1;			//占位，执行散热报警等
+		,100)
 	}
 }
 void vTask_Moving(void* arg)
@@ -99,8 +114,13 @@ void vTask_Moving(void* arg)
 	while(1)
 	{
 		vTaskDelayUntil(&pxLastWakeTime,10);
-		//每10ms进入机械动作函数
+		//占位，每10ms进入机械动作函数
+		Func_Key_Run(TRUE);
 	}
+}
+void vTask_PIDExec(void* arg)
+{
+	
 }
 void vTask_StartOS(void* arg)
 {
@@ -127,6 +147,8 @@ void vTask_StartOS(void* arg)
 	xTaskCreate(vTask_SysSupervisor, "SysSupervisor", 512, NULL, uxPriority_SysSupervisor, &TCB_SysSupervisor);
 //创建并运行机械动作任务
 	xTaskCreate(vTask_Moving, "Moving", 128, NULL, uxPriority_Moving, &TCB_Moving);
+//创建PID执行任务
+	xTaskCreate(vTask_PIDExec, "PIDExec", 128, NULL, uxPriority_PIDExec, &TCB_PIDExec);
 //固化参数复原
 	ParamSave_Load_pack();
 //开启RTOS系统

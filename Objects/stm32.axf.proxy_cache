@@ -6840,10 +6840,10 @@ Contents of the .debug_info section:
     <71d6>   DW_AT_sibling     : <0x71fe>
     <71d8>   DW_AT_byte_size   : 1
  <2><71d9>: Abbrev Number: 20 (DW_TAG_enumerator)
-    <71da>   DW_AT_name        : Pin_TLED1
+    <71da>   DW_AT_name        : Pin_RLED1
     <71e4>   DW_AT_const_value : DW_FORM_data1 66
  <2><71e6>: Abbrev Number: 20 (DW_TAG_enumerator)
-    <71e7>   DW_AT_name        : Pin_TLED2
+    <71e7>   DW_AT_name        : Pin_RLED2
     <71f1>   DW_AT_const_value : DW_FORM_data1 67
  <2><71f3>: Abbrev Number: 20 (DW_TAG_enumerator)
     <71f4>   DW_AT_name        : Pin_SW

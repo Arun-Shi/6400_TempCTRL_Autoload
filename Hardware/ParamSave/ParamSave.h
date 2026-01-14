@@ -1,9 +1,8 @@
 #ifndef __PARAMSAVE_H__
 #define __PARAMSAVE_H__
-#include "./Base_Head_File.h"
 
 typedef struct {
-	//xxx* Data;
+	u8* Data;
     u16 Sys_Version;
     u16 Magic_Num;
     u8  Crc_Num;
