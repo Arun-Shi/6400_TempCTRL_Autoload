@@ -130,6 +130,9 @@ __Status Func_MainInit(void)
 	SmpIO_Init(Pin_RLED2,PP_1);
 	SmpIO_Init(Pin_SW,IPU);							//切换脚初始化
 
+	//项目功能IO初始化
+	
+
 	if(!sta)
 		Printf_Chx(ChSW,"%s\r\n","初始化失败");
 	return sta;

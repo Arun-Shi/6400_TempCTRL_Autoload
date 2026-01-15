@@ -552,11 +552,6 @@
               <FilePath>.\Hardware\PWM\PWM.c</FilePath>
             </File>
             <File>
-              <FileName>timer.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\Hardware\TIMER\timer.c</FilePath>
-            </File>
-            <File>
               <FileName>DS18B20.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\Hardware\DS18B20\DS18B20.c</FilePath>

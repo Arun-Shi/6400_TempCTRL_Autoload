@@ -33,10 +33,8 @@
 //中层，可能包含底层
 #include "./M24Cxx/M24Cxx.h"
 #include "./ParamSave/ParamSave.h"
-#include "./TIMER/timer.h"
 #include "./PWM/PWM.h"
 #include "./PID/PID.h"
-#include "./Fans/Fans.h"
 #include "./DS18B20/DS18B20.h"
 
 /*******************************************业务层代码***********************************************/
