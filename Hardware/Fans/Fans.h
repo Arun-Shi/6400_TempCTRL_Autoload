@@ -3,8 +3,7 @@
 
 #include "./Base_Head_File.h"
 
-#define __Fans_Chx_Num 14
-#define Fans_PWM_Feq 25000
+#define __Fans_Chx_Num 8
 
 typedef enum{
 	Fans_Stop=0,				//Õ£÷π∑Á…»

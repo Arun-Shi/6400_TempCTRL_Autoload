@@ -1,11 +1,4 @@
 #include "./Base_Head_File.h"
-/*
-1、主要功能模块：通道开关，采集输出，状态监管。内部模块：指令接口，电信号采集
-2、指令可以设定通道开关，可以获取某一通道的状态，可以设定连续输出通道状态
-	单次输出为当即采集并输出，持续输出在此次基础上，设定发送间隔，在主循环轮询进行间隔判断和输出
-3、指令可以设定状态监管，对某通道的电压电流电功率可单独设置上下限进行持续监管，可设定超限自关闭
-	监管实现在持续采集时，采集完即对监管开关和数值状态进行判断，错误即刻输出
-*/
 /*****************************************************************************关键宏定义*********************************************************************************/
 #if 1
 typedef enum{
@@ -14,20 +7,47 @@ typedef enum{
 	Pin_RLED2=E3,
 
 //到位传感器定义引脚
-	Pin_SenseUP=C3,
-	Pin_SenseDOWN=A0,
-	Pin_SenseIN=A4,
-	Pin_SenseOUT=A5,
+	Pin_Sense_UDU=C3,						//上下行程	上传感器
+	Pin_Sense_UDD=A0,						//上下行程  下传感器
+	Pin_Sense_FBB=A4,						//前后行程  前传感器
+	Pin_Sense_FBF=A5,						//前后行程  后传感器
 
 //步进电机相关引脚
-	Pin_StepPulse_UD=F5,					//上下方向电机的脉冲引脚
-	Pin_StepDir_UD=F7,
-	Pin_StepEN_UD=F8,
+	Pin_StepPulse_UD=F5,					//上下方向电机的脉冲引脚	非定时器引脚，使用IO翻转模拟脉冲
+	Pin_StepDir_UD=F7,						//上下方向电机的方向引脚
+	Pin_StepEN_UD=F8,						//上下方向电机的使能引脚
 
-	Pin_StepPulse_FB=F9,					//前后方向电机的脉冲引脚
-	Pin_StepDir_FB=F10,
-	Pin_StepEN_FB=C0,
+	Pin_StepPulse_FB=F9,					//前后方向电机的脉冲引脚	非定时器引脚，使用IO翻转模拟脉冲
+	Pin_StepDir_FB=F10,						//前后方向电机的方向引脚
+	Pin_StepEN_FB=C0,						//前后方向电机的使能引脚
 
+//发热丝相关引脚
+	Pin_Heating_Right=E14,					//右仓发热丝引脚			Tim1_CH4
+	Pin_Heating_MidR=E13,					//中仓右发热丝引脚			Tim1_CH3
+	Pin_Heating_MidL=E11,					//中仓左发热丝引脚			Tim1_CH2
+	Pin_Heating_Left=E9,					//左仓发热丝引脚			Tim1_CH1
+
+//空气循环风扇引脚
+	Pin_FanPWM_HR=B1,						//空气循环风扇PWM引脚_右仓发热丝	TIM3_CH4
+	Pin_FanPWM_HMidR=B0,					//空气循环风扇PWM引脚_中仓右发热丝	TIM3_CH3
+	Pin_FanPWM_HMidL=A7,					//空气循环风扇PWM引脚_中仓左发热丝  TIM3_CH2
+	Pin_FanPWM_HL=A6,						//空气循环风扇PWM引脚_左仓发热丝  	TIM3_CH1
+	Pin_FanPWM_OutR=D15,					//空气循环风扇PWM引脚_右仓出口		Tim4_CH4
+	Pin_FanPWM_OutMidR=D14,					//空气循环风扇PWM引脚_中仓右出口	Tim4_CH3
+	Pin_FanPWM_OutMidL=D13,					//空气循环风扇PWM引脚_中仓左出口	Tim4_CH2
+	Pin_FanPWM_OutL=D12,					//空气循环风扇PWM引脚_左仓出口		Tim4_CH1
+
+//散热电推杆控制引脚
+	Pin_Windows_BackL1= E2,					//电推杆——左仓后面引脚1
+	Pin_Windows_BackL2= E3,					//电推杆——左仓后面引脚2
+	Pin_Windows_BackR1= E4,					//电推杆——右仓后面引脚1
+	Pin_Windows_BackR2= E5,					//电推杆——右仓后面引脚2
+	Pin_Windows_FrontL1= E6,				//电推杆——左仓前面引脚1
+	Pin_Windows_FrontL2= F0,				//电推杆——左仓前面引脚2
+	Pin_Windows_FrontR1= F1,				//电推杆——右仓前面引脚1
+	Pin_Windows_FrontR2= F2,				//电推杆——右仓前面引脚2
+
+//温度传感器引脚
 	Pin_SW=B14,
 }Func_IO;
 
@@ -114,24 +134,134 @@ __Status Func_MainInit(void)
 		Printf_Chx(ChSW,"%s\r\n","初始化失败");
 	return sta;
 }
-double Func_TempToPID(double Temp)
+float Func_TempToPID(float Temp)
 {
-	return Temp*125;						//转化为PID输入，80->10000
+	return Temp*125;								//转化为PID输入，80->10000
 }
-double Func_PIDToActLeft(double Out)
+//散热窗控制权设计理念：开启优先级大于关闭，想开就开，但控制权自由才可获取，想关得判断控制权，关闭后释放控制权
+u8 xSema_WindowCTRL_LM	=0;							//模拟信号量机制，开窗置1或2，判断为自己的控制权时，允许关窗置0	L为1，M为2，R为3
+u8 xSema_WindowCTRL_RM	=0;							//模拟信号量机制，开窗置2或3，判断为自己的控制权时，允许关窗置0
+//执行器包括热循环扇（输出的绝对值控制占空比，即转速)、加热丝（输出值（正数）控制占空比）、散热窗（输出低于-10则开启散热窗）
+float Func_PIDToActLeft(float Out)					//PID输出转化为功率比例，10000->50
 {
-	//占位，直接将输出值应用于执行器
-	return Out/200;							//PID输出转化为功率比例，10000->50
+	Out/=200;
+	//加热循环风扇转速
+	PWM_SetDuty(_PWMOrd_FanHL,fabs(Out));
+
+	//设定发热丝的功率
+	if(__Flt_Great(Out,0))
+		PWM_SetDuty(_PWMOrd_HeatLeft,Out);
+	else
+		PWM_SetDuty(_PWMOrd_HeatLeft,0);
+	//设定散热窗
+	if(__Flt_Less(Out,-10))
+	{
+		PWM_SetDuty(_PWMOrd_FanOutL,fabs(Out));		//打开散热风扇，打开散热窗
+		if(xSema_WindowCTRL_LM==0)
+		{
+			xSema_WindowCTRL_LM=1;					//左中窗口 标记为左仓控制
+			SmpIO_Set(Pin_Windows_FrontL1, TRUE);
+			SmpIO_Set(Pin_Windows_FrontL2, FALSE);
+		}
+	}
+	else
+	{
+		PWM_SetDuty(_PWMOrd_FanOutL,0);				//关闭散热风扇，关闭散热窗
+		if(xSema_WindowCTRL_LM==1)					//左中窗口控制权在手时，可关闭
+		{
+			SmpIO_Set(Pin_Windows_FrontL1, FALSE);
+			SmpIO_Set(Pin_Windows_FrontL2, TRUE);
+			xSema_WindowCTRL_LM=0;
+		}
+	}
+	return Out;
 }
-double Func_PIDToActMid(double Out)
+float Func_PIDToActMid(float Out)
 {
-	//占位，直接将输出值应用于执行器
-	return Out/200;							//PID输出转化为功率比例，10000->50
+	Out/=200;
+	//加热循环风扇转速
+	PWM_SetDuty(_PWMOrd_FanHMidL,fabs(Out));
+	PWM_SetDuty(_PWMOrd_FanHMidR,fabs(Out));
+
+	//设定发热丝的功率
+	if(__Flt_Great(Out,0))
+	{
+		PWM_SetDuty(_PWMOrd_HeatMidL,Out);
+		PWM_SetDuty(_PWMOrd_HeatMidR,Out);
+	}
+	else
+	{
+		PWM_SetDuty(_PWMOrd_HeatMidL,0);
+		PWM_SetDuty(_PWMOrd_HeatMidR,0);
+	}
+	//设定散热窗
+	if(__Flt_Less(Out,-10))
+	{
+		PWM_SetDuty(_PWMOrd_FanOutL,fabs(Out));		//打开散热风扇，打开散热窗
+		if(xSema_WindowCTRL_LM==0)
+		{
+			xSema_WindowCTRL_LM=2;					//左中窗口 标记为中仓控制
+			SmpIO_Set(Pin_Windows_FrontL1, TRUE);
+			SmpIO_Set(Pin_Windows_FrontL2, FALSE);
+		}
+		if(xSema_WindowCTRL_RM==0)
+		{
+			xSema_WindowCTRL_RM=2;					//右中窗口 标记为中仓控制
+			SmpIO_Set(Pin_Windows_FrontR1, TRUE);
+			SmpIO_Set(Pin_Windows_FrontR2, FALSE);
+		}
+	}
+	else
+	{
+		PWM_SetDuty(_PWMOrd_FanOutL,0);				//关闭散热风扇，关闭散热窗
+		if(xSema_WindowCTRL_LM==2)					//左中窗口控制权在手时，可关闭
+		{
+			SmpIO_Set(Pin_Windows_FrontL1, FALSE);
+			SmpIO_Set(Pin_Windows_FrontL2, TRUE);
+			xSema_WindowCTRL_LM=0;
+		}
+		if(xSema_WindowCTRL_RM==2)					//右中窗口控制权在手时，可关闭
+		{
+			SmpIO_Set(Pin_Windows_FrontR1, FALSE);
+			SmpIO_Set(Pin_Windows_FrontR2, TRUE);
+			xSema_WindowCTRL_RM=0;
+		}
+	}
+	return Out;
 }
-double Func_PIDToActRight(double Out)
+float Func_PIDToActRight(float Out)
 {
-	//占位，直接将输出值应用于执行器
-	return Out/200;							//PID输出转化为功率比例，10000->50
+	Out/=200;
+	//加热循环风扇转速
+	PWM_SetDuty(_PWMOrd_FanHR,fabs(Out));
+
+	//设定发热丝的功率
+	if(__Flt_Great(Out,0))
+		PWM_SetDuty(_PWMOrd_HeatRight,Out);
+	else
+		PWM_SetDuty(_PWMOrd_HeatRight,0);
+	//设定散热窗
+	if(__Flt_Less(Out,-10))
+	{
+		PWM_SetDuty(_PWMOrd_FanOutR,fabs(Out));		//打开散热风扇，打开散热窗
+		if(xSema_WindowCTRL_RM==0)
+		{
+			xSema_WindowCTRL_RM=3;					//左中窗口 标记为左仓控制
+			SmpIO_Set(Pin_Windows_FrontR1, TRUE);
+			SmpIO_Set(Pin_Windows_FrontR2, FALSE);
+		}
+	}
+	else
+	{
+		PWM_SetDuty(_PWMOrd_FanOutR,0);				//关闭散热风扇，关闭散热窗
+		if(xSema_WindowCTRL_RM==3)					//左中窗口控制权在手时，可关闭
+		{
+			SmpIO_Set(Pin_Windows_FrontR1, FALSE);
+			SmpIO_Set(Pin_Windows_FrontR2, TRUE);
+			xSema_WindowCTRL_RM=0;
+		}
+	}
+	return Out;
 }
 //IO直接发送PWM
 void Func_IOSend(u8 IO, u8 Speed)
@@ -182,8 +312,9 @@ u8 Func_Stepper_Run(u8 Ch, u32 Len, u8 Dir, u8 Speed)
 }
 #define __Stepper_Len_UD 100					//步进电机_上下方向_行程
 #define __Stepper_Len_FB 300					//步进电机_前后方向_行程
-//执行动作流程，返回状态，TRUE为成功，FALSE为失败，0xFF是正在运行
-u8 Func_RunFlow(u8 Flow)					//0是退出流程，1是夹持流程
+
+//执行产品退出动作流程，返回状态，TRUE为成功，FALSE为失败，0xFF是正在运行
+u8 Func_RunExit(u8 En)
 {
 	static u8 step=0;						//状态机步骤索引
 	
@@ -192,31 +323,81 @@ u8 Func_RunFlow(u8 Flow)					//0是退出流程，1是夹持流程
 	{
 		case 0:								//检查所有传感器状态（是否互斥）
 		{
-			if(SmpIO_Read(Pin_SenseUP)&& SmpIO_Read(Pin_SenseDOWN))
+			if(SmpIO_Read(Pin_Sense_UDU)&& SmpIO_Read(Pin_Sense_UDD))
 				return FALSE;
-			if(SmpIO_Read(Pin_SenseIN)&& SmpIO_Read(Pin_SenseOUT))
+			if(SmpIO_Read(Pin_Sense_FBF)&& SmpIO_Read(Pin_Sense_FBB))
 				return FALSE;
 			step++;
 			break;
 		}
 		case 1:								//下降
 		{
-			if(Func_Stepper_Run(1, __Stepper_Len_UD, Flow, 1)==FALSE)				//上下电机慢速下降，到位会停止
+			if(Func_Stepper_Run(1, __Stepper_Len_UD, 0, 1)==FALSE)				//上下电机慢速下降，到位会停止
 				step++;
-			else if(Func_Stepper_Run(1, 10, Flow, 0)==FALSE)						//还没到位时，再增加10mm
+			else if(Func_Stepper_Run(1, 10, 0, 0)==FALSE)						//还没到位时，再增加10mm
 				step++;
-			else return FALSE;														//还无法到位，则返回FALSE
+			else return FALSE;													//还无法到位，则返回FALSE
 			break;
 		}
 		case 3:								//后退，
 		{
-			if(Func_Stepper_Run(0, __Stepper_Len_FB, Flow, 0)==FALSE)				//上下电机慢速下降，到位会停止
+			if(Func_Stepper_Run(0, __Stepper_Len_FB, 0, 0)==FALSE)				//上下电机慢速下降，到位会停止
 				step++;
-			else if(Func_Stepper_Run(0, 10, Flow, 0)==FALSE)						//还没到位时，再增加10mm
+			else if(Func_Stepper_Run(0, 10, 0, 0)==FALSE)						//还没到位时，再增加10mm
 				step++;
-			else return FALSE;														//还无法到位，则返回FALSE
+			else return FALSE;													//还无法到位，则返回FALSE
 		}
-		case 4:							//还原
+		case 4:								//还原
+		{
+			step=0;
+			return TRUE;
+		}
+	}
+	return 0xFF;
+}
+//执行产品夹持动作流程，返回状态，TRUE为成功，FALSE为失败，0xFF是正在运行
+u8 Func_RunClamp(u8 En)
+{
+	static u8 step=0;						//状态机步骤索引
+//开始执行退出动作流程（状态机）
+	switch(step)							//状态机
+	{
+		case 0:								//检查所有传感器状态（是否互斥）
+		{
+			if(SmpIO_Read(Pin_Sense_UDU)&& SmpIO_Read(Pin_Sense_UDD))
+				return FALSE;
+			if(SmpIO_Read(Pin_Sense_FBF)&& SmpIO_Read(Pin_Sense_FBB))
+				return FALSE;
+			step++;
+			break;
+		}
+		case 1:								//下降
+		{
+			if(Func_Stepper_Run(1, __Stepper_Len_UD, 0, 1)==FALSE)				//上下电机慢速下降，到位会停止
+				step++;
+			else if(Func_Stepper_Run(1, 10, 0, 0)==FALSE)						//还没到位时，再增加10mm
+				step++;
+			else return FALSE;													//还无法到位，则返回FALSE
+			break;
+		}
+		case 3:								//推进
+		{
+			if(Func_Stepper_Run(0, __Stepper_Len_FB, 1, 0)==FALSE)				//上下电机慢速推进，到位会停止
+				step++;
+			else if(Func_Stepper_Run(0, 10, 1, 0)==FALSE)						//还没到位时，再增加10mm
+				step++;
+			else return FALSE;													//还无法到位，则返回FALSE
+		}
+		case 4:								//上升压合
+		{
+			if(Func_Stepper_Run(1, __Stepper_Len_UD, 1, 1)==FALSE)				//上下电机慢速下降，到位会停止
+				step++;
+			else if(Func_Stepper_Run(1, 10, 1, 0)==FALSE)						//还没到位时，再增加10mm
+				step++;
+			else return FALSE;													//还无法到位，则返回FALSE
+			break;
+		}
+		case 5:								//还原
 		{
 			step=0;
 			return TRUE;
@@ -227,15 +408,13 @@ u8 Func_RunFlow(u8 Flow)					//0是退出流程，1是夹持流程
 //判断按键，执行操作
 void Func_InPos_Judge(void)
 {
-		if(Stepper_RunEN)
-			vTaskDelay(1);
-		else
-			return;								//直接返回
-			
-		Step_RunEN_UDU= !SmpIO_Read(Pin_SenseUP);
-		Step_RunEN_UDD= !SmpIO_Read(Pin_SenseDOWN);
-		Step_RunEN_FBF= !SmpIO_Read(Pin_SenseIN);
-		Step_RunEN_FBB= !SmpIO_Read(Pin_SenseOUT);
+	if(Stepper_RunEN)
+	{
+		Step_RunEN_UDU= !SmpIO_Read(Pin_Sense_UDU);
+		Step_RunEN_UDD= !SmpIO_Read(Pin_Sense_UDD);
+		Step_RunEN_FBF= !SmpIO_Read(Pin_Sense_FBF);
+		Step_RunEN_FBB= !SmpIO_Read(Pin_Sense_FBB);
+	}
 }
 void Func_Key_Run(u8 En)
 {
@@ -284,10 +463,10 @@ void Func_Key_Run(u8 En)
 			u8 t_sta=0;
 			if(DUBL && (time==2))
 			{
-				Printf_Chx(Ch1,"SHOW:C-气缸开始闭合#");			//占位，调用整体动作函数-》闭合
+				Printf_Chx(Ch1,"SHOW:C-气缸开始闭合#");				//调用整体动作函数-》闭合
 				while(1)
 				{
-					t_sta=Func_RunFlow(1);						//执行动作流程，返回状态，TRUE为成功，FALSE为失败，0xFF是正在运行
+					t_sta=Func_RunClamp(Stepper_RunEN);				//执行动作流程，返回状态，TRUE为成功，FALSE为失败，0xFF是正在运行
 					if(t_sta!=0xFF)
 						Printf_Chx(Ch1,"%s",t_sta?"成功#":"失败#");
 				}
@@ -295,10 +474,10 @@ void Func_Key_Run(u8 En)
 			else if(time ==1 )
 			{
 
-				Printf_Chx(Ch1,"SHOW:C-气缸开始退出...#");			//占位，调用整体动作函数-》退出
+				Printf_Chx(Ch1,"SHOW:C-气缸开始退出...#");			//调用整体动作函数-》退出
 				while(1)
 				{
-					t_sta=Func_RunFlow(0);						//执行动作流程，返回状态，TRUE为成功，FALSE为失败，0xFF是正在运行
+					t_sta=Func_RunExit(Stepper_RunEN);				//执行动作流程，返回状态，TRUE为成功，FALSE为失败，0xFF是正在运行
 					if(t_sta!=0xFF)
 						Printf_Chx(Ch1,"%s",t_sta?"成功#":"失败#");
 				}
@@ -337,6 +516,7 @@ void Temperature_Average_Cal(void)
 		temp+=DS_ALL_Arr[i].Tempdata;
 	Temperature_OFBox[2]=temp/4;
 }
+
 #endif
 /*****************************************************************************中断处理***********************************************************************************/
 #if 1

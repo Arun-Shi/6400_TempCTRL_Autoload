@@ -18,12 +18,11 @@ UBaseType_t		uxPriority_SysSupervisor= 4;
 TaskHandle_t	TCB_Moving;											//机械动作任务
 UBaseType_t		uxPriority_Moving= 4;
 
-TaskHandle_t	TCB_PIDExec;										//PID执行任务
-UBaseType_t		uxPriority_PIDExec= 3;
-
 SemaphoreHandle_t xMutex_UartTX;									//打印端口的互斥量
 SemaphoreHandle_t xMutex_IICBus;									//IIC总线互斥量
 SemaphoreHandle_t xSem_UartRx;										//接收端口的信号量
+
+#define T_SVS	10		//监管任务的周期
 /*************************任务集合**************************** */
 /*******************************************************************************
  * @brief 	项目空闲任务：1、运行灯翻转	2、eep存储	3、
@@ -67,13 +66,13 @@ void vTask_PIDFunc_Handler(void* arg)
 	{
 		vTaskDelayUntil(&pxLastWakeTime,1000);
 		//每1000ms执行一次PID计算
-		PID_Input_Change(&PID_TempLeft, Temperature_OFBox[0]);
-		if(PID_Calculate_Out(&PID_TempLeft))
-			PID_Apply_Out(&PID_TempLeft);
-
 		PID_Input_Change(&PID_TempMid, Temperature_OFBox[1]);
 		if(PID_Calculate_Out(&PID_TempMid))
 			PID_Apply_Out(&PID_TempMid);
+
+		PID_Input_Change(&PID_TempLeft, Temperature_OFBox[0]);
+		if(PID_Calculate_Out(&PID_TempLeft))
+			PID_Apply_Out(&PID_TempLeft);
 
 		PID_Input_Change(&PID_TempRight, Temperature_OFBox[2]);
 		if(PID_Calculate_Out(&PID_TempRight))
@@ -100,12 +99,16 @@ void vTask_SysSupervisor(void* arg)
 	vTaskDelay(50);									//与系统起点错开50ms
 	while(1)
 	{
-		vTaskDelayUntil(&pxLastWakeTime,10);
-		//每10ms执行一次系统状态监控
+		//每T_SVS ms执行一次系统状态监控
+		vTaskDelayUntil(&pxLastWakeTime,T_SVS);
+		HBeat_Opera(2);								//软件定时器累加
 		__Cycle_ToDo(								//每1000ms进行一次温度超限判断
-			if(Temperature_OFBox[0]>__Value_MAXTemp)
-				Temperature_OFBox[0]+=1;			//占位，执行散热报警等
+			for(u8 i=0;i<3;i++)
+				if(Temperature_OFBox[i]>__Value_MAXTemp)
+					Temperature_OFBox[i]+=1;		//占位，执行散热报警等
 		,100)
+
+		Func_InPos_Judge();							//每T_SVSms判断到位感应器，切换步进电机方向运动使能。
 	}
 }
 void vTask_Moving(void* arg)
@@ -114,13 +117,9 @@ void vTask_Moving(void* arg)
 	while(1)
 	{
 		vTaskDelayUntil(&pxLastWakeTime,10);
-		//占位，每10ms进入机械动作函数
-		Func_Key_Run(TRUE);
+		//每10ms进入机械动作函数
+		Func_Key_Run(Stepper_RunEN);
 	}
-}
-void vTask_PIDExec(void* arg)
-{
-	
 }
 void vTask_StartOS(void* arg)
 {
@@ -147,8 +146,6 @@ void vTask_StartOS(void* arg)
 	xTaskCreate(vTask_SysSupervisor, "SysSupervisor", 512, NULL, uxPriority_SysSupervisor, &TCB_SysSupervisor);
 //创建并运行机械动作任务
 	xTaskCreate(vTask_Moving, "Moving", 128, NULL, uxPriority_Moving, &TCB_Moving);
-//创建PID执行任务
-	xTaskCreate(vTask_PIDExec, "PIDExec", 128, NULL, uxPriority_PIDExec, &TCB_PIDExec);
 //固化参数复原
 	ParamSave_Load_pack();
 //开启RTOS系统
@@ -161,4 +158,20 @@ void RTOS_TaskInit( void )
 	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_4);				//RTOS对应的中断配置需求
 	xTaskCreate(vTask_StartOS, "StartOS", configMINIMAL_STACK_SIZE * 3, NULL, configMAX_PRIORITIES- 1, NULL);
 	vTaskStartScheduler();										//开启任务调度器，开始Os系统初始化
+}
+u64 HBeat_Opera(u8 Ope)
+{
+	static u64 HBeat_Cnt;
+	switch(Ope)
+	{
+		case 0:
+			HBeat_Cnt=0;
+		break;
+		case 1:
+			return HBeat_Cnt;
+		case 2:
+			HBeat_Cnt+=T_SVS;
+		break;
+	}
+	return 1;
 }

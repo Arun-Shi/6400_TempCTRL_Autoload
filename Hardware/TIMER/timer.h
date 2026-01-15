@@ -12,11 +12,6 @@
 #define Tim4_Src_Frequency 72000000ul
 
 void Sys_Base_TIM_Init(u16 Feq);
-void TIM3_PWM_Init(u8 Chx, u16 ARR, u16 PSC, u16 CCR);
-void TIM4_PWM_Init(u8 Chx, u16 ARR, u16 PSC, u16 CCR);
-void TIM2_PWM_Init(u8 Chx, u16 ARR, u16 PSC, u16 CCR);
-void TIM8_PWM_Init(u8 Chx, u16 ARR, u16 PSC, u16 CCR);
-
 
 
 #endif

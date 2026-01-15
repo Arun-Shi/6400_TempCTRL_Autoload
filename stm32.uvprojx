@@ -542,11 +542,6 @@
               <FilePath>.\Freertos\Source\RTOS_Task.c</FilePath>
             </File>
             <File>
-              <FileName>Fans.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\Hardware\Fans\Fans.c</FilePath>
-            </File>
-            <File>
               <FileName>PID.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\Hardware\PID\PID.c</FilePath>
