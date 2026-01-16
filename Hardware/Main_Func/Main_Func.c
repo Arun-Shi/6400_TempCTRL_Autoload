@@ -38,10 +38,10 @@ typedef enum{
 	Pin_FanPWM_OutL=D12,					//空气循环风扇PWM引脚_左仓出口		Tim4_CH1
 
 //散热电推杆控制引脚
-	Pin_Windows_BackL1= E2,					//电推杆——左仓后面引脚1
-	Pin_Windows_BackL2= E3,					//电推杆——左仓后面引脚2
-	Pin_Windows_BackR1= E4,					//电推杆——右仓后面引脚1
-	Pin_Windows_BackR2= E5,					//电推杆——右仓后面引脚2
+	Pin_Windows_BackL1 = E2,				//电推杆——左仓后面引脚1
+	Pin_Windows_BackL2 = E3,				//电推杆——左仓后面引脚2
+	Pin_Windows_BackR  = E4,				//电推杆——右仓后面引脚1
+	Pin_Windows_BackR2 = E5,				//电推杆——右仓后面引脚2
 	Pin_Windows_FrontL1= E6,				//电推杆——左仓前面引脚1
 	Pin_Windows_FrontL2= F0,				//电推杆——左仓前面引脚2
 	Pin_Windows_FrontR1= F1,				//电推杆——右仓前面引脚1
@@ -131,8 +131,28 @@ __Status Func_MainInit(void)
 	SmpIO_Init(Pin_SW,IPU);							//切换脚初始化
 
 	//项目功能IO初始化
-	
+	SmpIO_Init(Pin_Sense_UDU,	IPU); 
+	SmpIO_Init(Pin_Sense_UDD,	IPU);	
+	SmpIO_Init(Pin_Sense_FBB,	IPU);
+	SmpIO_Init(Pin_Sense_FBF,	IPU);
 
+	SmpIO_Init(Pin_StepPulse_UD,PP_0);
+	SmpIO_Init(Pin_StepDir_UD,	PP_1);
+	SmpIO_Init(Pin_StepEN_UD,	PP_0);
+
+	SmpIO_Init(Pin_StepPulse_FB,PP_0);
+	SmpIO_Init(Pin_StepDir_FB,	PP_1);
+	SmpIO_Init(Pin_StepEN_FB,	PP_0);
+
+	SmpIO_Init(Pin_Windows_BackL1 ,	PP_0);
+	SmpIO_Init(Pin_Windows_BackL2 ,	PP_0);
+	SmpIO_Init(Pin_Windows_BackR  ,	PP_0);
+	SmpIO_Init(Pin_Windows_BackR2 ,	PP_0);
+	SmpIO_Init(Pin_Windows_FrontL1,	PP_0);
+	SmpIO_Init(Pin_Windows_FrontL2,	PP_0);
+	SmpIO_Init(Pin_Windows_FrontR1,	PP_0);
+	SmpIO_Init(Pin_Windows_FrontR2,	PP_0);
+	
 	if(!sta)
 		Printf_Chx(ChSW,"%s\r\n","初始化失败");
 	return sta;

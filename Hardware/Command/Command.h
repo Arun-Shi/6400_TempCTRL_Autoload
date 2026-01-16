@@ -24,5 +24,7 @@ u8 CMD_Catch_Some(char** Buff, char* Str, ...);
 u8 CMD_Word_Turn_Index(char** Buff, char* Cmd);
 u8 CMD_Word_T_Some(u8* Indexs, char** CMDs, ...);
 
+u8 Sys_Handler(char* Buff);
+
 #endif
 

@@ -2,19 +2,92 @@
 
 #define HELP_CMD_Info	"使用 ?+指令模块 可查询指令详细参数\r\n"
 
-#define Param_CMDINFO		"\r\n系统指令\r\n\
-\r\n-Save   保存系统参数，将当前参数固化\r\n\
-\r\n-Load   加载系统参数，即恢复上次保存的参数，将覆盖未保存参数\r\n\
-\r\n-Reset  恢复系统默认参数\r\n\
-\r\n例：Param Save ->保存系统参数。\r\n"
+#define Param_CMDINFO		"\r\n参数指令\r\n\
+\t-Save   保存系统参数，将当前参数固化\r\n\
+\t-Load   加载系统参数，即恢复上次保存的参数，将覆盖未保存参数\r\n\
+\t-Reset  恢复系统默认参数\r\n\
+\t例：Param Save ->保存系统参数。\r\n"
+
+#define Sys_CMDINFO			"\r\n设置指令\
+\t-TempCTRL     控制温度控制功能状态\r\n\
+\t-Set_TarTemp  设置温度目标值\r\n\
+\t-Get_Data     获取当前温度数据\r\n\
+\t-Set_Button   按键控制功能的使能切换\r\n\
+\t例：Sys Set_TarTemp 50 ->设置温度目标值为50℃\r\n\
+\t例：Sys TempCTRL Enable ->开启温度控制\r\n"
 
 Command cmd_list[] = //"命令词",回调函数,"命令信息"
 {
 	{"Help",	Help_Handle,		"帮助指令",						HELP_CMD_Info},
 	{"?",		Print_ModeInfo,		"查询,? xx查询具体指令",		HELP_CMD_Info},
 	{"Param",	Param_Handler,		"参数指令",						Param_CMDINFO},
+	{"Sys",		Sys_Handler,		"设置指令",						Sys_CMDINFO},
 	NULL,
 };
+u8 Sys_Handler(char* Buff)
+{
+//定义变量
+	u8 STA=TRUE;
+	char str_temp[20]={0};
+//抓取词条
+	Buff= Catch_And_Jump_Word(str_temp, Buff, 19);
+//比对词条并执行函数取返回值
+	if(strncasecmp(str_temp,"TempCTRL",8)==0)			//控制温控功能状态(当前直接控制3路)
+	{
+		Catch_And_Jump_Word(str_temp, Buff, 7);
+		if(strncasecmp(str_temp,"Disable",7)==0)
+			{
+				PID_Switch(&PID_TempLeft ,	FALSE);
+				PID_Switch(&PID_TempMid	 ,	FALSE);
+				PID_Switch(&PID_TempRight,	FALSE);
+			}
+		else if(strncasecmp(str_temp,"Enable",6)==0)
+			{
+				PID_Switch(&PID_TempLeft,	TRUE);
+				PID_Switch(&PID_TempMid	,	TRUE);
+				PID_Switch(&PID_TempRight,	TRUE);
+			}
+		else
+			STA=FALSE;
+	}
+	else if(strncasecmp(str_temp,"Set_TarTemp",11)==0)	//设置期望温度(当前直接控制3路)
+		{
+			Catch_And_Jump_Word(str_temp, Buff, 8);
+			float target= strtof(str_temp, NULL);
+			if(__Range_Judg(target,20, __Value_MAXTemp-5))	//判断温度是否在合理范围内
+			{
+				PID_Set_Target(&PID_TempLeft ,target);
+				PID_Set_Target(&PID_TempMid  ,target);
+				PID_Set_Target(&PID_TempRight,target);
+			}
+			else
+				STA=FALSE;
+		}
+	else if(strncasecmp(str_temp,"Get_Data",7)==0)		//获取信息
+	{
+		Printf_Chx(ChSW,"Cur_temp Left:%.2f℃\r\n",Temperature_OFBox[0]);
+		Printf_Chx(ChSW,"Cur_temp Mid:%.2f℃\r\n",Temperature_OFBox[1]);
+		Printf_Chx(ChSW,"Cur_temp Right:%.2f℃\r\n",Temperature_OFBox[2]);
+
+		Printf_Chx(ChSW,"Target:%.2f℃\r\n",PID_TempLeft.Value.Target/125);
+		
+		Printf_Chx(ChSW,"Temp_Ctrl status:%s\r\n", PID_TempLeft.PID_Switch?"Enable":"Disable");
+	}
+	else if(strncasecmp(str_temp,"Set_Button",10)==0)	//控制按键轮询功能的使能状态
+	{
+		Catch_And_Jump_Word(str_temp, Buff, 7);
+		if(strncasecmp(str_temp,"Disable",7)==0)
+			Stepper_RunEN=FALSE;
+		else if(strncasecmp(str_temp,"Enable",6)==0)
+			Stepper_RunEN=TRUE;
+		else
+			STA=FALSE;
+	}
+	else
+		STA=FALSE;
+//没有匹配返回FALSE
+	return STA;
+}
 /*
 描述：指令扫描，获取接收数据包中的指令
 参数：数据包地址

@@ -11,50 +11,7 @@ u8 SmpIO_StrtPin(char* Str)
     u8 pin = ((Str[0] - 'A') << 4) | (num & 0x0F);
     return pin;
 }
-/*还未验证
-u8 SmpIO_Init(u8 Port_Pin, Mode_TypeDef Mode)
-{
-    GPIO_InitTypeDef STRUCT;
-	static GPIO_TypeDef* const GPIO_PORT_MAP[] = {GPIOA, GPIOB, GPIOC, GPIOD, GPIOE, GPIOF, GPIOG};
-	static const u32 GPIO_RCC_MAP[] = {RCC_APB2Periph_GPIOA, RCC_APB2Periph_GPIOB, RCC_APB2Periph_GPIOC, 
-                                   		RCC_APB2Periph_GPIOD, RCC_APB2Periph_GPIOE, RCC_APB2Periph_GPIOF, RCC_APB2Periph_GPIOG};
-	static const u8 GPIO_Mode_MAP[] = {GPIO_Mode_IPU, GPIO_Mode_IPD, GPIO_Mode_IN_FLOATING, GPIO_Mode_AIN, 
-										GPIO_Mode_Out_PP, GPIO_Mode_Out_PP, GPIO_Mode_Out_OD, GPIO_Mode_Out_OD, GPIO_Mode_AF_PP, GPIO_Mode_AF_OD,};
-    u8 port_idx = Port_Pin >> 4;
-    u8 pin_idx  = Port_Pin & 0x0F;
 
-    if (port_idx> 6) return FALSE;
-
-    // 1. 自动开启时钟
-    RCC_APB2PeriphClockCmd(GPIO_RCC_MAP[port_idx], ENABLE);
-
-    // 2. 解析模式
-    Out_TypeDef Out_Data = Out_None;
-	STRUCT.GPIO_Mode =GPIO_Mode_MAP[Mode];
-    switch (Mode)
-    {
-        case PP_0: Out_Data = Out_0; break;
-        case PP_1: Out_Data = Out_1; break;
-        case OD_0: Out_Data = Out_0; break;
-        case OD_1: Out_Data = Out_1; break;
-    }
-
-    // 3. 配置复用时钟
-    if (Mode == AF_PP || Mode == AF_OD)
-		RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
-
-    // 4. 执行初始化
-    STRUCT.GPIO_Pin = 1 << pin_idx;
-    STRUCT.GPIO_Speed = DE_SPEED;
-    GPIO_Init(GPIO_PORT_MAP[port_idx], &STRUCT);
-
-    // 5. 初始电平设定
-    if (Out_Data != Out_None)
-        SmpIO_Set(Port_Pin, (u8)Out_Data); 
-
-    return TRUE;
-}
-*/
 u8 SmpIO_Init(u8 Port_Pin, Mode_TypeDef Mode)
 {
 	GPIO_InitTypeDef STRUCT;
@@ -157,6 +114,7 @@ u8 SmpIO_Init(u8 Port_Pin, Mode_TypeDef Mode)
 	
 	return TRUE;
 }
+
 u8 inline SmpIO_Set(u8 Port_Pin, u8 Level)
 {
     u8 port = Port_Pin >> 4;   // 提取 A_Port, B_Port 等
@@ -177,3 +135,47 @@ void inline SmpIO_Toggle(u8 Port_Pin)
     
     PX_BIT(port, pin, BITOpe_W) = !PX_BIT(port, pin, BITOpe_W);
 }
+/*还未验证
+u8 SmpIO_Init(u8 Port_Pin, Mode_TypeDef Mode)
+{
+    GPIO_InitTypeDef STRUCT;
+	static GPIO_TypeDef* const GPIO_PORT_MAP[] = {GPIOA, GPIOB, GPIOC, GPIOD, GPIOE, GPIOF, GPIOG};
+	static const u32 GPIO_RCC_MAP[] = {RCC_APB2Periph_GPIOA, RCC_APB2Periph_GPIOB, RCC_APB2Periph_GPIOC, 
+                                   		RCC_APB2Periph_GPIOD, RCC_APB2Periph_GPIOE, RCC_APB2Periph_GPIOF, RCC_APB2Periph_GPIOG};
+	static const u8 GPIO_Mode_MAP[] = {GPIO_Mode_IPU, GPIO_Mode_IPD, GPIO_Mode_IN_FLOATING, GPIO_Mode_AIN, 
+										GPIO_Mode_Out_PP, GPIO_Mode_Out_PP, GPIO_Mode_Out_OD, GPIO_Mode_Out_OD, GPIO_Mode_AF_PP, GPIO_Mode_AF_OD,};
+    u8 port_idx = Port_Pin >> 4;
+    u8 pin_idx  = Port_Pin & 0x0F;
+
+    if (port_idx> 6) return FALSE;
+
+    // 1. 自动开启时钟
+    RCC_APB2PeriphClockCmd(GPIO_RCC_MAP[port_idx], ENABLE);
+
+    // 2. 解析模式
+    Out_TypeDef Out_Data = Out_None;
+	STRUCT.GPIO_Mode =GPIO_Mode_MAP[Mode];
+    switch (Mode)
+    {
+        case PP_0: Out_Data = Out_0; break;
+        case PP_1: Out_Data = Out_1; break;
+        case OD_0: Out_Data = Out_0; break;
+        case OD_1: Out_Data = Out_1; break;
+    }
+
+    // 3. 配置复用时钟
+    if (Mode == AF_PP || Mode == AF_OD)
+		RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
+
+    // 4. 执行初始化
+    STRUCT.GPIO_Pin = 1 << pin_idx;
+    STRUCT.GPIO_Speed = DE_SPEED;
+    GPIO_Init(GPIO_PORT_MAP[port_idx], &STRUCT);
+
+    // 5. 初始电平设定
+    if (Out_Data != Out_None)
+        SmpIO_Set(Port_Pin, (u8)Out_Data); 
+
+    return TRUE;
+}
+*/

@@ -129,7 +129,6 @@ void vTask_StartOS(void* arg)
 	xMutex_UartTX= xSemaphoreCreateMutex();						//创建打印输出的互斥锁
 	xSem_UartRx= xSemaphoreCreateBinary();						//创建串口接收信号量
 	xMutex_IICBus= xSemaphoreCreateMutex();						//创建IIC总线互斥锁
-
 //初始化功能外设
 	Func_MainInit();
 
