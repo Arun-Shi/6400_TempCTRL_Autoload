@@ -206,6 +206,7 @@ void Func_Standby(void)
 	PWM_SetDuty(_PWMOrd_FanHMidR, 30);
 	PWM_SetDuty(_PWMOrd_FanHR, 30);
 }
+
 float Func_TempToPID(float Temp)
 {
 	return Temp*125;								//转化为PID输入，80->10000

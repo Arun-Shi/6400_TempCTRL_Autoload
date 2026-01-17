@@ -1,0 +1,4 @@
+程序继续FreeRTOS实现，整体功能为闭环温度控制箱体，还包含了电机实现的产品夹持和推出。
+程序由Main进入，直接调用Os初始化函数，初始化资源和任务，再直接启动整个Os的运行。
+主要功能在Hardware/Main_Func/Main_Func.c源文件中实现
+Os的任务和资源配置，在/Freertos/Source/RTOS_Task.c源文件中

@@ -75,11 +75,22 @@ u8 Sys_Handler(char* Buff)
 	}
 	else if(strncasecmp(str_temp,"Set_Button",10)==0)	//控制按键轮询功能的使能状态
 	{
+		#define 	Pin_StepEN_UD	F8						//上下方向电机的使能引脚
+		#define 	Pin_StepEN_FB	C0						//前后方向电机的使能引脚
 		Catch_And_Jump_Word(str_temp, Buff, 7);
 		if(strncasecmp(str_temp,"Disable",7)==0)
+		{
 			Stepper_RunEN=FALSE;
+			SmpIO_Set(Pin_StepEN_UD,TRUE);
+			SmpIO_Set(Pin_StepEN_FB,TRUE);
+		}	
+			
 		else if(strncasecmp(str_temp,"Enable",6)==0)
+		{
 			Stepper_RunEN=TRUE;
+			SmpIO_Set(Pin_StepEN_UD,FALSE);
+			SmpIO_Set(Pin_StepEN_FB,FALSE);
+		}
 		else
 			STA=FALSE;
 	}
