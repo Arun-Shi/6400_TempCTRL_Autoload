@@ -40,7 +40,7 @@ typedef enum{
 //散热电推杆控制引脚
 	Pin_Windows_BackL1 = E2,				//电推杆——左仓后面引脚1
 	Pin_Windows_BackL2 = E3,				//电推杆——左仓后面引脚2
-	Pin_Windows_BackR  = E4,				//电推杆——右仓后面引脚1
+	Pin_Windows_BackR1  = E4,				//电推杆——右仓后面引脚1
 	Pin_Windows_BackR2 = E5,				//电推杆——右仓后面引脚2
 	Pin_Windows_FrontL1= E6,				//电推杆——左仓前面引脚1
 	Pin_Windows_FrontL2= F0,				//电推杆——左仓前面引脚2
@@ -71,6 +71,8 @@ PID_Struct PID_TempLeft={
 		.Out_Acc=0,
 		.Death_err=0,
 	},
+	.Value.Max_Out=-10000,
+	.Value.Max_Out=40000,
 	.Level=Hi_Speed,
 	.PID_Switch=FALSE,
 	.I_Change=Func_TempToPID,
@@ -88,6 +90,8 @@ PID_Struct PID_TempMid={
 		.Out_Acc=0,
 		.Death_err=0,
 	},
+	.Value.Max_Out=-10000,
+	.Value.Max_Out=40000,
 	.Level=Hi_Speed,
 	.PID_Switch=FALSE,
 	.I_Change=Func_TempToPID,
@@ -105,6 +109,8 @@ PID_Struct PID_TempRight={
 		.Out_Acc=0,
 		.Death_err=0,
 	},
+	.Value.Max_Out=-10000,
+	.Value.Max_Out=40000,
 	.Level=Hi_Speed,
 	.PID_Switch=FALSE,
 	.I_Change=Func_TempToPID,
@@ -146,7 +152,7 @@ __Status Func_MainInit(void)
 
 	SmpIO_Init(Pin_Windows_BackL1 ,	PP_0);
 	SmpIO_Init(Pin_Windows_BackL2 ,	PP_0);
-	SmpIO_Init(Pin_Windows_BackR  ,	PP_0);
+	SmpIO_Init(Pin_Windows_BackR1  ,PP_0);
 	SmpIO_Init(Pin_Windows_BackR2 ,	PP_0);
 	SmpIO_Init(Pin_Windows_FrontL1,	PP_0);
 	SmpIO_Init(Pin_Windows_FrontL2,	PP_0);
@@ -156,6 +162,49 @@ __Status Func_MainInit(void)
 	if(!sta)
 		Printf_Chx(ChSW,"%s\r\n","初始化失败");
 	return sta;
+}
+void Func_Dissipation(void)
+{
+	Printf_Chx(ChSW, "Error:温度超限，关闭温控!\r\n");
+	//关闭PID
+	PID_Switch(&PID_TempLeft, FALSE);
+	PID_Switch(&PID_TempMid, FALSE);
+	PID_Switch(&PID_TempRight, FALSE);
+	//关闭发热丝
+	PWM_SetDuty(_PWMOrd_HeatLeft,0);
+	PWM_SetDuty(_PWMOrd_HeatMidL,0);
+	PWM_SetDuty(_PWMOrd_HeatMidR,0);
+	PWM_SetDuty(_PWMOrd_HeatRight,0);
+	//打开所有散热窗
+	SmpIO_Set(Pin_Windows_FrontL1, FALSE);
+	SmpIO_Set(Pin_Windows_FrontL2, TRUE);
+	SmpIO_Set(Pin_Windows_BackL1, FALSE);
+	SmpIO_Set(Pin_Windows_BackL2, TRUE);
+	SmpIO_Set(Pin_Windows_FrontR1, FALSE);
+	SmpIO_Set(Pin_Windows_FrontR2, TRUE);
+	SmpIO_Set(Pin_Windows_BackR1, FALSE);
+	SmpIO_Set(Pin_Windows_BackR2, TRUE);
+	//加大所有循环风扇
+	PWM_SetDuty(_PWMOrd_FanOutL, 90);
+	PWM_SetDuty(_PWMOrd_FanOutMidL, 90);
+	PWM_SetDuty(_PWMOrd_FanOutMidR, 90);
+	PWM_SetDuty(_PWMOrd_FanOutR, 90);
+	PWM_SetDuty(_PWMOrd_FanHL, 90);
+	PWM_SetDuty(_PWMOrd_FanHMidL, 90);
+	PWM_SetDuty(_PWMOrd_FanHMidR, 90);
+	PWM_SetDuty(_PWMOrd_FanHR, 90);
+}
+void Func_Standby(void)
+{
+	//将所有风扇设为常态
+	PWM_SetDuty(_PWMOrd_FanOutL, 30);
+	PWM_SetDuty(_PWMOrd_FanOutMidL, 30);
+	PWM_SetDuty(_PWMOrd_FanOutMidR, 30);
+	PWM_SetDuty(_PWMOrd_FanOutR, 30);
+	PWM_SetDuty(_PWMOrd_FanHL, 30);
+	PWM_SetDuty(_PWMOrd_FanHMidL, 30);
+	PWM_SetDuty(_PWMOrd_FanHMidR, 30);
+	PWM_SetDuty(_PWMOrd_FanHR, 30);
 }
 float Func_TempToPID(float Temp)
 {

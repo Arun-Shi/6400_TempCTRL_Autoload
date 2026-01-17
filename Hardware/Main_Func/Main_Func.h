@@ -27,6 +27,10 @@ float Func_PIDToActLeft(float Out);
 float Func_PIDToActMid(float Out);
 float Func_PIDToActRight(float Out);
 void Func_InPos_Judge(void);
+void Func_Dissipation(void);
+void Func_Standby(void);
+
+
 
 extern USART_TypeDef* ChSW;
 

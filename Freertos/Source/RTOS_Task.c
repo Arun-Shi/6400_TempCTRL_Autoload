@@ -96,6 +96,7 @@ void vTask_CycleGetTemp(void* arg)
 void vTask_SysSupervisor(void* arg)
 {
 	TickType_t pxLastWakeTime= xTaskGetTickCount();
+	u8 flag_dissipation=FALSE;
 	vTaskDelay(50);									//与系统起点错开50ms
 	while(1)
 	{
@@ -105,7 +106,17 @@ void vTask_SysSupervisor(void* arg)
 		__Cycle_ToDo(								//每1000ms进行一次温度超限判断
 			for(u8 i=0;i<3;i++)
 				if(Temperature_OFBox[i]>__Value_MAXTemp)
-					Temperature_OFBox[i]+=1;		//占位，执行散热报警等
+				{
+					flag_dissipation=TRUE;
+					Func_Dissipation();				//开启散热状态
+					break;
+				}
+				else if(i==3 && flag_dissipation)
+				{
+					flag_dissipation=FALSE;
+					Func_Standby();					//已经超温后，三个都降下来了，开启待机状态
+				}
+					
 		,100)
 
 		Func_InPos_Judge();							//每T_SVSms判断到位感应器，切换步进电机方向运动使能。
@@ -146,7 +157,7 @@ void vTask_StartOS(void* arg)
 //创建并运行机械动作任务
 	xTaskCreate(vTask_Moving, "Moving", 128, NULL, uxPriority_Moving, &TCB_Moving);
 //固化参数复原
-	ParamSave_Load_pack();
+	// ParamSave_Load_pack();		//目前没有需要保存的参数
 //开启RTOS系统
 	Printf_Chx(ChSW, "输入Help获取帮助，指令后需加新行\r\n");
 	xTaskResumeAll();

@@ -161,23 +161,9 @@ u8 Print_ModeInfo(char* Str)
 }
 u8 Help_Handle(char* Str)
 {
-//	if(*(Str-2)=='?'){
-//		char str_temp[32]={0};
-//		for(u8 i= 1; cmd_list[i].cmd!=NULL; i++){							//将接收到的包与指令库对比
-//			Catch_And_Jump_Word(str_temp,Str,31);
-//			u8 len= __Bigger(strlen(cmd_list[i].cmd), strlen(str_temp));	//长度定为两者中较大的
-//			
-//			if(strncasecmp( Str, cmd_list[i].cmd, len) == 0)				//对比数据包和指令，相等为0
-//				if(cmd_list[i].CMD_INFO)
-//					Printf_Chx(ChSW,"%s",cmd_list[i].CMD_INFO);
-//		}
-//	}
-//	else
-//	{
-		for(u8 i=0; cmd_list[i].cmd!=NULL;i++)
-			if(cmd_list[i].cmd&& cmd_list[i].info)
-				Printf_Chx(ChSW, "%s		%s\r\n", cmd_list[i].cmd, cmd_list[i].info);
-//	}
+	for(u8 i=0; cmd_list[i].cmd!=NULL;i++)
+		if(cmd_list[i].cmd&& cmd_list[i].info)
+			Printf_Chx(ChSW, "%s		%s\r\n", cmd_list[i].cmd, cmd_list[i].info);
 	return 1;
 }
 char* skip(char* buff)				//跳过多空格
